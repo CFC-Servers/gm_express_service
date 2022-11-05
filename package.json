@@ -1,0 +1,20 @@
+{
+    "name": "GmodExpress",
+    "private": true,
+    "version": "1.0.0",
+    "description": "GmodExpress is a web application that lets you send data to, and receive data from your clients out-of-band",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "format": "prettier --write '**/*.{js,css,json,md}'"
+    },
+    "author": "{{ authors }}",
+    "license": "ISC",
+    "devDependencies": {
+        "prettier": "^1.17.0"
+    },
+    "dependencies": {
+        "itty-router": "^2.1.9",
+        "serverless-cloudflare-workers": "^1.2.0"
+    }
+}
