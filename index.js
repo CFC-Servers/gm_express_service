@@ -1,6 +1,5 @@
-import { Router } from "itty-router"
+import { Router } from 'itty-router'
 
-// Create a new router
 const router = Router()
 
 async function validateRequest(req, access) {
@@ -9,7 +8,14 @@ async function validateRequest(req, access) {
   return !!expected
 }
 
-router.get("/", async (event) => {
+async function putData(data) {
+  const id = crypto.randomUUID()
+  await GmodExpress.put(`data:${id}`, data.data)
+
+  return id
+}
+
+router.get("/", async () => {
   return Response.redirect("https://github.com/CFC-Servers/gm_express", 302);
 })
 
@@ -40,7 +46,21 @@ router.get("/:access/:id", async (request) => {
     return new Response("", { status: 403 })
   }
 
-  const data = await GmodExpress.get(`data:${id}`)
+  let data = await GmodExpress.get(`data:${id}`)
+
+  // If data starts with multi: then download and combine all pieces
+  if (data.startsWith("multi:")) {
+    let combined = ""
+
+    const pieces = data.substring(6).split(",")
+    for (const id of pieces) {
+      const piece = await GmodExpress.get(`data:${id}`)
+      combined += piece
+    }
+
+    data = combined
+  }
+
   const response = JSON.stringify({ data: data })
 
   return new Response(response, {
@@ -51,6 +71,8 @@ router.get("/:access/:id", async (request) => {
   })
 })
 
+const maxDataSize = 24 * 1024 * 1024
+
 router.post("/:access", async request => {
   const { access } = request.params
   const isValid = await validateRequest(request, access)
@@ -59,12 +81,32 @@ router.post("/:access", async request => {
     return new Response("", { status: 403 })
   }
 
-  const data = await request.json()
-  const id = crypto.randomUUID()
-  await GmodExpress.put(`data:${id}`, data.data)
+  const struct = await request.json()
+  const data = struct.data
 
-  const response = JSON.stringify({ id: id })
+  let responseId
 
+  if (data.length < maxDataSize) {
+    responseId = crypto.randomUUID()
+    await GmodExpress.put(`data:${responseId}`, data)
+  } else {
+    const chunks = []
+
+    for (let i = 0; i < data.length; i += maxDataSize) {
+      const slice = data.slice(i, i + maxDataSize)
+      const id = crypto.randomUUID()
+      await GmodExpress.put(`data:${id}`, slice)
+      chunks.push(id)
+    }
+
+    responseId = crypto.randomUUID()
+    let combined = chunks.join(",")
+    combined = `multi:${combined}`
+
+    await GmodExpress.put(`data:${responseId}`, combined)
+  }
+
+  const response = JSON.stringify({ id: responseId })
   return new Response(response, {
     status: 201,
     headers: {
