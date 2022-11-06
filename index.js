@@ -9,6 +9,11 @@ async function validateRequest(req, access) {
   return !!expected
 }
 
+router.get("/", async (event) => {
+  return Response.redirect("https://github.com/CFC-Servers/gm_express", 302);
+})
+
+
 // Returns two keys, one for the server and one to send to clients
 router.get("/register", async () => {
   const server = crypto.randomUUID()
