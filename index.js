@@ -35,7 +35,7 @@ app.get("/:access/:id", async (c) => {
   const isValid = await validateRequest(c, access)
 
   if (!isValid) {
-    return new Response("", { status: 403 })
+    return c.text("", 403)
   }
 
   let data = await c.env.GmodExpress.get(`data:${id}`)
@@ -49,14 +49,7 @@ app.get("/:access/:id", async (c) => {
     await Promise.all(promises).then((results) => data = results.join(""))
   }
 
-  const response = JSON.stringify({ data: data })
-
-  return new Response(response, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    }
-  })
+  return c.json({data: data})
 })
 
 const maxDataSize = 24 * 1024 * 1024
@@ -66,7 +59,7 @@ app.post("/:access", async (c) => {
   const isValid = await validateRequest(c, access)
 
   if (!isValid) {
-    return new Response("", { status: 403 })
+    return c.text("", 403)
   }
 
   const struct = await request.json()
@@ -97,13 +90,7 @@ app.post("/:access", async (c) => {
     await c.env.GmodExpress.put(`data:${responseId}`, combined)
   }
 
-  const response = JSON.stringify({ id: responseId })
-  return new Response(response, {
-    status: 201,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  })
+  return c.json({id: responseId})
 })
 
 export default app
