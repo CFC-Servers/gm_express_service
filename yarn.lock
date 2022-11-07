@@ -1091,6 +1091,11 @@ hmac-drbg@^1.0.1:
     minimalistic-assert "^1.0.0"
     minimalistic-crypto-utils "^1.0.1"
 
+hono@^2.4.1:
+  version "2.4.1"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-2.4.1.tgz#ae140ca49f6eea7857dbb1dee14e5d5d5f828079"
+  integrity sha512-cxnfkoMJSyt7Kg17HdbL4/k63Mo80v8DvIXY4qHrQX9ceFiEo73oTH/Ikr8Ii7ym/ur78x9O5/4zQ6as9TRz9A==
+
 https-browserify@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/https-browserify/-/https-browserify-1.0.0.tgz#ec06c10e0a34c0f2faf199f7fd7fc78fffd03c73"
@@ -1280,11 +1285,6 @@ isobject@^3.0.0, isobject@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/isobject/-/isobject-3.0.1.tgz#4e431e92b11a9731636aa1f9c8d1ccbcfdab78df"
   integrity sha512-WhB9zCku7EGTj/HQQRz5aUQEUeoQZH2bWcltRErOpymJ4boYE6wL9Tbr23krRPSZ+C5zqNSrSw+Cc7sZZ4b7vg==
-
-itty-router@^2.1.9:
-  version "2.6.6"
-  resolved "https://registry.yarnpkg.com/itty-router/-/itty-router-2.6.6.tgz#78a08c3b7dc1bd90ce832cae8eff7e4cbfbf67ef"
-  integrity sha512-hIPHtXGymCX7Lzb2I4G6JgZFE4QEEQwst9GORK7sMYUpJvLfy4yZJr95r04e8DzoAnj6HcxM2m4TbK+juu+18g==
 
 json-parse-better-errors@^1.0.2:
   version "1.0.2"
