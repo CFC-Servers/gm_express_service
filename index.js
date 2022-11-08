@@ -14,13 +14,20 @@ async function putToken(c, token) {
 
 async function putData(c, data) {
   const id = crypto.randomUUID()
-  await c.env.GmodExpress.put(`data:${id}`, data)
+  await Promise.all([
+    c.env.GmodExpress.put(`data:${id}`, data),
+    c.env.GmodExpress.put(`size:${id}`, data.length)
+  ])
 
   return id
 }
 
 async function getData(c, id) {
   return await c.env.GmodExpress.get(`data:${id}`)
+}
+
+async function getSize(c, id) {
+  return await c.env.GmodExpress.get(`size:${id}`)
 }
 
 async function splitData(c, data) {
@@ -53,8 +60,10 @@ app.get("/register", async (c) => {
   const server = crypto.randomUUID()
   const client = crypto.randomUUID()
 
-  await putToken(c, server)
-  await putToken(c, client)
+  await Promise.all([
+    putToken(c, server),
+    putToken(c, client)
+  ])
 
   return c.json({server: server, client: client})
 })
@@ -78,6 +87,14 @@ app.get("/:access/:id", async (c) => {
   }
 
   return c.json({data: data})
+})
+
+app.get("/:access/:id/size", async (c) => {
+  const access = c.req.param("access")
+  const id = c.req.param("id")
+  const isValid = await validateRequest(c, access)
+
+  return c.json({size: await getSize(c, id)})
 })
 
 const maxDataSize = 24 * 1024 * 1024
