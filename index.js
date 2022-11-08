@@ -1,5 +1,6 @@
 import { Hono } from "hono"
 const app = new Hono()
+const expiration = { expirationTtl: 60 * 60 * 24 }
 
 async function validateRequest(c, access) {
   const expected = await c.env.GmodExpress.get(`token:${access}`)
@@ -9,14 +10,14 @@ async function validateRequest(c, access) {
 
 async function putToken(c, token) {
   const now = Date.now()
-  await c.env.GmodExpress.put(`token:${token}`, now)
+  await c.env.GmodExpress.put(`token:${token}`, now, expiration)
 }
 
 async function putData(c, data) {
   const id = crypto.randomUUID()
   await Promise.all([
-    c.env.GmodExpress.put(`data:${id}`, data),
-    c.env.GmodExpress.put(`size:${id}`, data.length)
+    c.env.GmodExpress.put(`data:${id}`, data, expiration),
+    c.env.GmodExpress.put(`size:${id}`, data.length, expiration)
   ])
 
   return id
