@@ -1,5 +1,4 @@
 import { Hono } from "hono"
-
 const app = new Hono()
 
 async function validateRequest(c, access) {
@@ -8,11 +7,43 @@ async function validateRequest(c, access) {
   return !!expected
 }
 
+async function putToken(c, token) {
+  const now = Date.now()
+  await c.env.GmodExpress.put(`token:${token}`, now)
+}
+
 async function putData(c, data) {
   const id = crypto.randomUUID()
-  await c.env.GmodExpress.put(`data:${id}`, data.data)
+  await c.env.GmodExpress.put(`data:${id}`, data)
 
   return id
+}
+
+async function getData(c, id) {
+  return await c.env.GmodExpress.get(`data:${id}`)
+}
+
+async function splitData(c, data) {
+  const chunks = []
+  const promises = []
+
+  for (let i = 0; i < data.length; i += maxDataSize) {
+    const slice = data.slice(i, i + maxDataSize)
+    const id = await putData(c, slice)
+    chunks.push(id)
+  }
+
+  await Promise.all(promises)
+
+  console.log( "Split into " + chunks.length + " pieces" )
+
+  const responseId = crypto.randomUUID()
+  let combined = chunks.join(",")
+  combined = `multi:${combined}`
+
+  await putData(c, combined)
+
+  return c.json({id: responseId})
 }
 
 app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
@@ -21,10 +52,9 @@ app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_ex
 app.get("/register", async (c) => {
   const server = crypto.randomUUID()
   const client = crypto.randomUUID()
-  const now = Date.now()
 
-  await c.env.GmodExpress.put(`token:${server}`, now)
-  await c.env.GmodExpress.put(`token:${client}`, now)
+  await putToken(c, server)
+  await putToken(c, client)
 
   return c.json({server: server, client: client})
 })
@@ -38,14 +68,12 @@ app.get("/:access/:id", async (c) => {
     return c.text("", 403)
   }
 
-  let data = await c.env.GmodExpress.get(`data:${id}`)
+  let data = await getData(c, id)
 
   // If data starts with multi: then download and combine all pieces
   if (data.startsWith("multi:")) {
-    let combined = ""
-
     const pieces = data.substring(6).split(",")
-    const promises = pieces.map((piece) => c.env.GmodExpress.get(`data:${piece}`))
+    const promises = pieces.map((piece) => getData(c, piece))
     await Promise.all(promises).then((results) => data = results.join(""))
   }
 
@@ -62,35 +90,17 @@ app.post("/:access", async (c) => {
     return c.text("", 403)
   }
 
-  const struct = await request.json()
+  const struct = await c.req.json()
   const data = struct.data
 
-  let responseId
-
   if (data.length < maxDataSize) {
-    responseId = crypto.randomUUID()
-    await c.env.GmodExpress.put(`data:${responseId}`, data)
-  } else {
-    const chunks = []
-    const promises = []
-
-    for (let i = 0; i < data.length; i += maxDataSize) {
-      const slice = data.slice(i, i + maxDataSize)
-      const id = crypto.randomUUID()
-      promises.push(c.env.GmodExpress.put(`data:${id}`, slice))
-      chunks.push(id)
-    }
-
-    await Promise.all(promises)
-
-    responseId = crypto.randomUUID()
-    let combined = chunks.join(",")
-    combined = `multi:${combined}`
-
-    await c.env.GmodExpress.put(`data:${responseId}`, combined)
+    const id = await putData(c, data)
+    return c.json({id: id})
   }
 
-  return c.json({id: responseId})
+  const remoteCloudflareIP = c.req.header("CF-Connecting-IP")
+  console.log( "Data is too large (" + data.length + " bytes from " + remoteCloudflareIP + "), splitting into pieces..." )
+  return await splitData(c, data)
 })
 
 export default app
