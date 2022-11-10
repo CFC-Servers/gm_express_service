@@ -1,6 +1,18 @@
-import { Hono } from "hono"
+// import { Hono } from "hono"
 const app = new Hono()
-const expiration = { expirationTtl: 60 * 60 * 24 }
+const expiration = 60 * 60 * 24
+// const maxDataSize = 24 * 1024 * 1024
+const maxDataSize = 100
+
+const makeMetadata = (c, extraMetadata) => {
+  return {
+    expirationTtl: expiration,
+    metadata: {
+      ...extraMetadata,
+      remote: c.req.header("CF-Connecting-IP")
+    }
+  }
+}
 
 async function validateRequest(c, access) {
   const expected = await c.env.GmodExpress.get(`token:${access}`)
@@ -8,23 +20,27 @@ async function validateRequest(c, access) {
   return !!expected
 }
 
-async function putToken(c, token) {
-  const now = Date.now()
-  await c.env.GmodExpress.put(`token:${token}`, now, expiration)
-}
+async function putData(c, data, isMulti) {
+  isMulti = isMulti || false
 
-async function putData(c, data) {
   const id = crypto.randomUUID()
+  const metadata = makeMetadata(c, dataType, { isMulti: isMulti })
+
   await Promise.all([
-    c.env.GmodExpress.put(`data:${id}`, data, expiration),
-    c.env.GmodExpress.put(`size:${id}`, data.length, expiration)
+    c.env.GmodExpress.put( `data:${id}`, data, { ...metadata, type: "arrayBuffer" }),
+    c.env.GmodExpress.put( `size:${id}`, data, metadata)
   ])
 
   return id
 }
 
+async function putToken(c, token) {
+  const now = Date.now()
+  await c.env.GmodExpress.put(`token:${token}`, now, makeMetadata(c))
+}
+
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`)
+  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
 }
 
 async function getSize(c, id) {
@@ -35,15 +51,14 @@ async function splitData(c, data) {
   const chunks = []
   const promises = []
 
-  for (let i = 0; i < data.length; i += maxDataSize) {
+  for (let i = 0; i < data.byteLength; i += maxDataSize) {
     const slice = data.slice(i, i + maxDataSize)
-    const id = await putData(c, slice)
-    chunks.push(id)
+    promises.push(putData(c, slie))
   }
 
-  await Promise.all(promises)
-
-  console.log( "Split into " + chunks.length + " pieces" )
+  await Promise.all(promises).then((results) => {
+    chunks.push(...results)
+  })
 
   const responseId = crypto.randomUUID()
   let combined = chunks.join(",")
@@ -54,10 +69,7 @@ async function splitData(c, data) {
   return c.json({id: responseId})
 }
 
-app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
-
-// Returns two keys, one for the server and one to send to clients
-app.get("/register", async (c) => {
+async function registerRequest(c) {
   const server = crypto.randomUUID()
   const client = crypto.randomUUID()
 
@@ -67,10 +79,10 @@ app.get("/register", async (c) => {
   ])
 
   return c.json({server: server, client: client})
-})
+}
 
-app.get("/:access/:id", async (c) => {
-  const access = c.req.param("access")
+async function readRequest(c) {
+  const access = c.req.param("token")
   const id = c.req.param("id")
   const isValid = await validateRequest(c, access)
 
@@ -81,44 +93,55 @@ app.get("/:access/:id", async (c) => {
   let data = await getData(c, id)
 
   // If data starts with multi: then download and combine all pieces
-  if (data.startsWith("multi:")) {
+  if (typeof(data) === "string" && data.startsWith("multi:")) {
+    console.log("Received a request to download a multi-part file")
     const pieces = data.substring(6).split(",")
     const promises = pieces.map((piece) => getData(c, piece))
-    await Promise.all(promises).then((results) => data = results.join(""))
+    await Promise.all(promises)
+      .then( async (results) => {
+        console.log("Received all pieces, combining them", results.length)
+        data = await new Blob(results).arrayBuffer()
+      })
   }
+  return c.body(data, 200, { "Content-Type": "application/octet-stream" })
+}
 
-  return c.json({data: data})
-})
-
-app.get("/:access/:id/size", async (c) => {
-  const access = c.req.param("access")
+async function readSizeRequest(c) {
+  const access = c.req.param("token")
   const id = c.req.param("id")
   const isValid = await validateRequest(c, access)
 
   return c.json({size: await getSize(c, id)})
-})
+}
 
-const maxDataSize = 24 * 1024 * 1024
-
-app.post("/:access", async (c) => {
-  const access = c.req.param("access")
+async function writeRequest(c) {
+  const access = c.req.param("token")
   const isValid = await validateRequest(c, access)
 
   if (!isValid) {
     return c.text("", 403)
   }
 
-  const struct = await c.req.json()
-  const data = struct.data
+  const data = await c.req.arrayBuffer()
 
-  if (data.length < maxDataSize) {
+  if (data.byteLength < maxDataSize) {
     const id = await putData(c, data)
     return c.json({id: id})
   }
 
   const remoteCloudflareIP = c.req.header("CF-Connecting-IP")
-  console.log( "Data is too large (" + data.length + " bytes from " + remoteCloudflareIP + "), splitting into pieces..." )
+  console.log("Received a request to upload a large file", remoteCloudflareIP, data.byteLength)
   return await splitData(c, data)
-})
+}
+
+app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
+
+// V1 Routes
+app.get("/v1/register", registerRequest)
+app.get("/v1/read/:token/:id", readRequest)
+app.get("/v1/size/:token/:id", readSizeRequest)
+app.post("/v1/write/:token", writeRequest)
+app.get("/v1/revision", async (c) => c.json({revision: 1}))
+
 
 export default app
