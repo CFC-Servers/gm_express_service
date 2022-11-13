@@ -33,7 +33,7 @@ async function putData(c, data) {
 }
 
 async function putToken(c, token) {
-  const now = Date.now()
+  const now = Date.now().toString()
   await c.env.GmodExpress.put(`token:${token}`, now, makeMetadata(c))
 }
 
