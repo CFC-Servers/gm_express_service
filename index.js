@@ -105,4 +105,6 @@ app.get("/v1/size/:token/:id", readSizeRequest)
 app.post("/v1/write/:token", writeRequest)
 app.get("/v1/revision", async (c) => c.json({revision: 1}))
 
+app.get("*", async (c) => c.text("Not Found - you may need to update the gm_express addon!", 406))
+
 export default app
