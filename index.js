@@ -1,63 +1,51 @@
 import { Hono } from "hono"
 const app = new Hono()
-const expiration = { expirationTtl: 60 * 60 * 24 }
+const expiration = 60 * 60 * 24
+const maxDataSize = 24 * 1024 * 1024
 
-async function validateRequest(c, access) {
-  const expected = await c.env.GmodExpress.get(`token:${access}`)
+const makeMetadata = (c, extraMetadata) => {
+  return {
+    expirationTtl: expiration,
+    metadata: {
+      ...extraMetadata,
+      remote: c.req.header("CF-Connecting-IP")
+    }
+  }
+}
+
+async function validateRequest(c, token) {
+  // TODO: Do a sanity check on expiration time too
+  const expected = await c.env.GmodExpress.get(`token:${token}`)
 
   return !!expected
 }
 
-async function putToken(c, token) {
-  const now = Date.now()
-  await c.env.GmodExpress.put(`token:${token}`, now, expiration)
-}
-
 async function putData(c, data) {
   const id = crypto.randomUUID()
+  const metadata = makeMetadata(c)
+
   await Promise.all([
-    c.env.GmodExpress.put(`data:${id}`, data, expiration),
-    c.env.GmodExpress.put(`size:${id}`, data.length, expiration)
+    c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata),
+    c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
   ])
 
   return id
 }
 
+async function putToken(c, token) {
+  const now = Date.now().toString()
+  await c.env.GmodExpress.put(`token:${token}`, now, makeMetadata(c))
+}
+
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`)
+  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
 }
 
 async function getSize(c, id) {
   return await c.env.GmodExpress.get(`size:${id}`)
 }
 
-async function splitData(c, data) {
-  const chunks = []
-  const promises = []
-
-  for (let i = 0; i < data.length; i += maxDataSize) {
-    const slice = data.slice(i, i + maxDataSize)
-    const id = await putData(c, slice)
-    chunks.push(id)
-  }
-
-  await Promise.all(promises)
-
-  console.log( "Split into " + chunks.length + " pieces" )
-
-  const responseId = crypto.randomUUID()
-  let combined = chunks.join(",")
-  combined = `multi:${combined}`
-
-  await putData(c, combined)
-
-  return c.json({id: responseId})
-}
-
-app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
-
-// Returns two keys, one for the server and one to send to clients
-app.get("/register", async (c) => {
+async function registerRequest(c) {
   const server = crypto.randomUUID()
   const client = crypto.randomUUID()
 
@@ -67,58 +55,56 @@ app.get("/register", async (c) => {
   ])
 
   return c.json({server: server, client: client})
-})
+}
 
-app.get("/:access/:id", async (c) => {
-  const access = c.req.param("access")
-  const id = c.req.param("id")
-  const isValid = await validateRequest(c, access)
-
+async function readRequest(c) {
+  const token = c.req.param("token")
+  const isValid = await validateRequest(c, token)
   if (!isValid) {
-    return c.text("", 403)
+    return c.text("", 401)
   }
 
-  let data = await getData(c, id)
-
-  // If data starts with multi: then download and combine all pieces
-  if (data.startsWith("multi:")) {
-    const pieces = data.substring(6).split(",")
-    const promises = pieces.map((piece) => getData(c, piece))
-    await Promise.all(promises).then((results) => data = results.join(""))
-  }
-
-  return c.json({data: data})
-})
-
-app.get("/:access/:id/size", async (c) => {
-  const access = c.req.param("access")
   const id = c.req.param("id")
-  const isValid = await validateRequest(c, access)
+  const data = await getData(c, id)
+  return c.body(data, 200, { "Content-Type": "application/octet-stream" })
+}
 
+async function readSizeRequest(c) {
+  const token = c.req.param("token")
+  const isValid = await validateRequest(c, token)
+  if (!isValid) {
+    return c.text("", 401)
+  }
+
+  const id = c.req.param("id")
   return c.json({size: await getSize(c, id)})
-})
+}
 
-const maxDataSize = 24 * 1024 * 1024
-
-app.post("/:access", async (c) => {
-  const access = c.req.param("access")
-  const isValid = await validateRequest(c, access)
-
+async function writeRequest(c) {
+  const token = c.req.param("token")
+  const isValid = await validateRequest(c, token)
   if (!isValid) {
-    return c.text("", 403)
+    return c.text("", 401)
   }
 
-  const struct = await c.req.json()
-  const data = struct.data
-
-  if (data.length < maxDataSize) {
-    const id = await putData(c, data)
-    return c.json({id: id})
+  const data = await c.req.arrayBuffer()
+  if (data.byteLength > maxDataSize) {
+    return c.text("Data exceeds maximum size of " + maxDataSize, 413)
   }
 
-  const remoteCloudflareIP = c.req.header("CF-Connecting-IP")
-  console.log( "Data is too large (" + data.length + " bytes from " + remoteCloudflareIP + "), splitting into pieces..." )
-  return await splitData(c, data)
-})
+  const id = await putData(c, data)
+  return c.json({id: id})
+}
+
+app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
+
+// V1 Routes
+app.get("/v1/register", registerRequest)
+app.get("/v1/read/:token/:id", readRequest)
+app.get("/v1/size/:token/:id", readSizeRequest)
+app.post("/v1/write/:token", writeRequest)
+app.get("/v1/revision", async (c) => c.json({revision: 1}))
+
+app.get("*", async (c) => c.text("Not Found - you may need to update the gm_express addon!", 406))
 
 export default app
