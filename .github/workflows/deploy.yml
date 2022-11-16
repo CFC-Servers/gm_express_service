@@ -1,0 +1,34 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+  repository_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@2.0.0
+        with:
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          preCommands: |
+            # Get jq
+            apt-get update -y && apt-get install -y jq
+
+            # Install packages
+            yarn
+
+            # Create the namespace if it doesn't exist
+            wrangler2 kv:namespace list | grep -q GmodExpress || wrangler2 kv:namespace create GmodExpress
+
+            # Get the namespace ID
+            namespaceid=$(wrangler2 kv:namespace list | jq '.[] | select(.title=="gmod-express-GmodExpress") | .id')
+
+            # Add the binding to the wrangler.toml
+            echo "kv_namespaces = [ { binding = 'GmodExpress', id = $namespaceid } ]" >> wrangler.toml

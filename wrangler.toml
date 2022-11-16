@@ -1,12 +1,5 @@
 name = "gmod-express"
-account_id = "dbf79eb4394912bf04f2408ce80546a4"
 workers_dev = true
-
-format = "modules"
 main = "./index.js"
 
 compatibility_date = "2022-11-05"
-kv_namespaces = [
-  { binding = "GmodExpress", id = "44152b48145b4062b49d2118cdb51394", preview_id = "db86034742fd4ed68399de24a2a65a54" }
-]
-
