@@ -5,7 +5,7 @@ This is the Wrangler project that supports the [GMod Express Addon](https://gith
 ## Deploy your own
 It should be super straightforward to set up your own service!
 
-It should only take a couple of minutes (more instructions below):
+It should only take a couple of minutes, just click this button! (more instructions below):
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button?paid=true)](https://deploy.workers.cloudflare.com/?url=https://github.com/CFC-Servers/gm_express_service&paid=true)
 
