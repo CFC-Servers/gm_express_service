@@ -1,18 +1,9 @@
-FROM ubuntu:22.10
-RUN apt-get update -y && apt-get install -y unzip curl
-ENV BUN_CANARY=1
+FROM denoland/deno:alpine
 
-WORKDIR /web
-RUN curl https://bun.sh/install | bash
-RUN mv -v /root/.bun/bin/bun /web/bun
+USER deno
+WORKDIR /app
 
-RUN echo $(/web/bun -v)
+COPY ./index.js /app/index.js
+COPY ./selfhost.js /app/selfhost.js
 
-RUN echo $(uname -r)
-
-RUN /web/bun upgrade --canary
-
-COPY ./docker/package.json /web/package.json
-RUN /web/bun install
-
-COPY ./index.js /web/index.js
+ENTRYPOINT ["deno", "run", "--allow-net", "--allow-read", "/app/index.js"]
