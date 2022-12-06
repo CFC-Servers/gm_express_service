@@ -1,0 +1,16 @@
+logLevel = "debug"
+
+[bundle]
+saveTo = "node_modules.bun"
+entryPoints = ["./app/index.js"]
+
+[install]
+registry = "https://registry.yarnpkg.com/"
+production = true
+dev = false
+
+[define]
+# Replace any usage of "process.env.bagel" with the string `lox`.
+# The values are parsed as JSON, except single-quoted strings are supported and `'undefined'` becomes `undefined` in JS.
+# This will probably change in a future release to be just regular TOML instead. It is a holdover from the CLI argument parsing.
+"process.env.bagel" = "'lox'"
