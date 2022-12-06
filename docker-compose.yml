@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  app:
+    container_name: express_service
+    build:
+      context: ./
+      dockerfile: ./docker/Dockerfile
+    image: ubuntu:22.04
+    environment:
+      - SELF_HOST=1
+      - BUN_CANARY=1
+      - NODE_ENV=production
+    entrypoint: ["/web/bun", "index.js"]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${API_HOST:-0.0.0.0}:${API_PORT:-3000}:3000/tcp"

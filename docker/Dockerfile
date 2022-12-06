@@ -1,8 +1,18 @@
-FROM jarredsumner/bun:edge AS builder
+FROM ubuntu:22.10
+RUN apt-get update -y && apt-get install -y unzip curl
+ENV BUN_CANARY=1
 
-COPY ../package.json package.json
-RUN bun install
+WORKDIR /web
+RUN curl https://bun.sh/install | bash
+RUN mv -v /root/.bun/bin/bun /web/bun
 
-COPY ../index.js index.js
+RUN echo $(/web/bun -v)
 
-ENTRYPOINT ["bun", "start", "index.js"]
+RUN echo $(uname -r)
+
+RUN /web/bun upgrade --canary
+
+COPY ./docker/package.json /web/package.json
+RUN /web/bun install
+
+COPY ./index.js /web/index.js
