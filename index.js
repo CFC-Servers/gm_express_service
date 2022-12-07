@@ -1,8 +1,7 @@
 const expiration = 60 * 60 * 24
 const maxDataSize = 24 * 1024 * 1024
 
-const isSelfHost = !!Deno
-const { app, serve } = await import(isSelfHost ? "./selfhost.js" : "./cloudflare.js")
+import { app, serve } from "./setup_app.js"
 
 const makeMetadata = (c, extraMetadata) => {
   return {
