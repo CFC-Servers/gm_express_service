@@ -9,4 +9,3 @@ rules = [
 
 [env.staging]
 name = "gmod-express-staging"
-kv_namespaces = [{binding= "GmodExpress", id = "db86034742fd4ed68399de24a2a65a54"}]
