@@ -5,7 +5,7 @@ This is the Wrangler project that supports the [GMod Express Addon](https://gith
 ## Deploy your own
 
 <details>
-<summary><h3>Deploy on Cloudflare :passenger_ship:</h3></summary>
+<summary><h3>Deploy on Cloudflare :cloud:</h3></summary>
 <br>
 It's super straightforward to run your own Express instance on Cloudflare!
 
@@ -34,7 +34,7 @@ It should only take a couple of minutes, just click this button! (more instructi
 </details>
 
 <details>
-<summary><h3>Self-Hosted :cowboy_hat_face:</h3></summary>
+<summary><h3>Self-Hosted :passenger_ship:</h3></summary>
 <br>
 
 The Express Service comes out-of-the-box ready to self-host.
