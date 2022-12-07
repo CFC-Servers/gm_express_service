@@ -3,7 +3,11 @@
 This is the Wrangler project that supports the [GMod Express Addon](https://github.com/cfc-Servers/gm_express).
 
 ## Deploy your own
-It should be super straightforward to set up your own service!
+
+<details>
+<summary><h3>Deploy on Cloudflare</h3></summary>
+<br>
+It's super straightforward to run your own Express instance on Cloudflare!
 
 It should only take a couple of minutes, just click this button! (more instructions below):
 
@@ -26,3 +30,48 @@ It should only take a couple of minutes, just click this button! (more instructi
 ![chrome_HxAtd02BXx](https://user-images.githubusercontent.com/7936439/202330247-8872dfcd-e16f-446a-9ea2-68c4384eed5c.png)
 
 ![chrome_5xgZ8Z0zRg](https://user-images.githubusercontent.com/7936439/202330307-8756142d-42e5-4e85-919a-1e4c335afff3.png)
+
+</details>
+
+<details>
+<summary><h3>Self-Hosted</h3></summary>
+<br>
+
+The Express Service comes out-of-the-box ready to self-host.
+
+The included `docker-compose.yml` has everything you need to get started. All you need is [Docker Compose](https://docs.docker.com/compose/install/).
+
+Once you clone the repository, you just start it with Compose:
+```bash
+docker compose up --build -d
+```
+
+The Express Service will (by default) be available at both `127.0.0.1:3000` and your public IP, port 3000.
+
+You can change the address that Express binds to by changing the `API_HOST`/`API_PORT` settings in the `.env` file.
+For example, if you were going to serve Express from behind a Reverse Proxy, you might want to set `API_HOST=127.0.0.1`.
+</details>
+
+### Configuring the addon for self-hosting
+If you self-host Express, you'll need to change a couple of convars.
+
+#### **`express_domain`**
+This convar tells both the Server _and_ Client what domain they can find Express at. By default, it's `gmod.express` - the public & free Express instance.
+
+If you run Express from Cloudflare, you'll need to update this convar with whatever your Cloudflare Worker URL is.
+By default it's a `*.workers.dev` domain, but if you configure it to use one of your domains, you'll of course want to set that instead.
+
+#### **`express_domain_cl`**
+This convar lets you set a specific domains for Clients. If you leave it empty, both Server and Client will use `express_domain`.
+
+This convar is useful if you self-host Express on the same machine that runs your Garry's Mod server. In that setup, you'll want to do something like this:
+```
+# Tell the server to find Express locally
+# (me.cfc.gg redirects to 127.0.0.1 to get around Gmod's localhost HTTP restrictions)
+express_domain "me.cfc.gg:3000"
+
+# Tell the clients to find it at your server's public IP (or, ideally, HTTPS-ready Domain)
+express_domain_cl "23.227.174.90:3000"
+```
+
+If you host on Cloudflare, you should leave this convar empty (`express_domain_cl ""`)

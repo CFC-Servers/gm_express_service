@@ -1,14 +1,14 @@
-import { Hono } from "hono"
-const app = new Hono()
 const expiration = 60 * 60 * 24
 const maxDataSize = 24 * 1024 * 1024
+
+import { app, serve } from "./setup_app.js"
 
 const makeMetadata = (c, extraMetadata) => {
   return {
     expirationTtl: expiration,
     metadata: {
       ...extraMetadata,
-      remote: c.req.header("CF-Connecting-IP")
+      remote: c.req.header("CF-Connecting-IP") || c.req.header("X-Forwarded-For")
     }
   }
 }
@@ -16,7 +16,6 @@ const makeMetadata = (c, extraMetadata) => {
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
   const expected = await c.env.GmodExpress.get(`token:${token}`)
-
   return !!expected
 }
 
@@ -103,8 +102,13 @@ app.get("/v1/register", registerRequest)
 app.get("/v1/read/:token/:id", readRequest)
 app.get("/v1/size/:token/:id", readSizeRequest)
 app.post("/v1/write/:token", writeRequest)
-app.get("/v1/revision", async (c) => c.json({revision: 1}))
+app.get("/v1/revision", async (c) => {
+  // NOTE: A revision change does not necessarily imply a breaking change
+  //       but it does imply that the user should update
+  return c.json({revision: 1});
+});
 
 app.get("*", async (c) => c.text("Not Found - you may need to update the gm_express addon!", 406))
 
 export default app
+serve(app.fetch)

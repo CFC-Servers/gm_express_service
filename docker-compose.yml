@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  kv:
+    container_name: express_db
+    image: eqalpha/keydb
+    entrypoint: ["keydb-server", "/etc/keydb/keydb.conf"]
+    expose:
+      - 6379
+    volumes:
+      - "./docker/keydb.conf:/etc/keydb/keydb.conf"
+
+  app:
+    container_name: express_service
+    build:
+      context: ./
+      dockerfile: ./docker/Dockerfile
+    image: denoland/deno:alpine
+    ports:
+      - "${API_HOST:-0.0.0.0}:${API_PORT:-3000}:8000/tcp"

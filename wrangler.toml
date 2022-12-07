@@ -1,5 +1,11 @@
 name = "gmod-express"
-workers_dev = true
 main = "./index.js"
+workers_dev = true
 
 compatibility_date = "2022-11-05"
+rules = [
+  { type = "ESModule", globs = ["setup_app.js"] }
+]
+
+[env.staging]
+name = "gmod-express-staging"
