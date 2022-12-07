@@ -103,6 +103,8 @@ app.get("/v1/read/:token/:id", readRequest)
 app.get("/v1/size/:token/:id", readSizeRequest)
 app.post("/v1/write/:token", writeRequest)
 app.get("/v1/revision", async (c) => {
+  // NOTE: A revision change does not necessarily imply a breaking change
+  //       but it does imply that the user should update
   return c.json({revision: 1});
 });
 
