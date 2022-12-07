@@ -52,6 +52,8 @@ You can change the address that Express binds to by changing the `API_HOST`/`API
 For example, if you were going to serve Express from behind a Reverse Proxy, you might want to set `API_HOST=127.0.0.1`.
 </details>
 
+---
+
 ### Configuring the addon for self-hosting
 If you self-host Express, you'll need to change a couple of convars.
 
