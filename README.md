@@ -57,11 +57,15 @@ For example, if you were going to serve Express from behind a Reverse Proxy, you
 ### Configuring the addon for self-hosting
 If you self-host Express, you'll need to change a couple of convars.
 
+<br>
+
 #### **`express_domain`**
 This convar tells both the Server _and_ Client what domain they can find Express at. By default, it's `gmod.express` - the public & free Express instance.
 
 If you run Express from Cloudflare, you'll need to update this convar with whatever your Cloudflare Worker URL is.
 By default it's a `*.workers.dev` domain, but if you configure it to use one of your domains, you'll of course want to set that instead.
+
+<br>
 
 #### **`express_domain_cl`**
 This convar lets you set a specific domains for Clients. If you leave it empty, both Server and Client will use `express_domain`.
