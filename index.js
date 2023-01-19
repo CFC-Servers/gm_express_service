@@ -65,6 +65,10 @@ async function readRequest(c) {
 
   const id = c.req.param("id")
   const data = await getData(c, id)
+  if (data === null) {
+    return c.text("No data found", 404)
+  }
+
   return c.body(data, 200, { "Content-Type": "application/octet-stream" })
 }
 
@@ -76,7 +80,12 @@ async function readSizeRequest(c) {
   }
 
   const id = c.req.param("id")
-  return c.json({size: await getSize(c, id)})
+  const size = await getSize(c, id)
+  if (size === null) {
+    return c.text("Size not found", 404)
+  }
+
+  return c.json({size: size})
 }
 
 async function writeRequest(c) {
