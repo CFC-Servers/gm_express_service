@@ -68,6 +68,7 @@ async function readRequest(c) {
   if (data === null) {
     return c.text("No data found", 404)
   }
+
   return c.body(data, 200, { "Content-Type": "application/octet-stream" })
 }
 
@@ -83,7 +84,8 @@ async function readSizeRequest(c) {
   if (size === null) {
     return c.text("Size not found", 404)
   }
-  return c.json({size: await getSize(c, id)})
+
+  return c.json({size: size})
 }
 
 async function writeRequest(c) {
