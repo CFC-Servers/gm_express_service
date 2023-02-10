@@ -45,8 +45,8 @@ async function getSize(c, id) {
 }
 
 async function registerRequest(c) {
-  const server = crypto.randomUUID()
-  const client = crypto.randomUUID()
+  const server = crypto.randomUUID({disableEntropyCache: true})
+  const client = crypto.randomUUID({disableEntropyCache: true})
 
   await Promise.all([
     putToken(c, server),
