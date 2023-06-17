@@ -55,7 +55,7 @@ For example, if you were going to serve Express from behind a Reverse Proxy, you
 ---
 
 ### Configuring the addon for self-hosting
-If you self-host Express, you'll need to change a couple of convars.
+If you deploy your own Express instance, you'll need to change a couple of convars.
 
 <br>
 
