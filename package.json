@@ -15,7 +15,6 @@
     },
     "dependencies": {
         "hono": "^3.2.5",
-        "range-parser": "^1.2.1",
         "serverless-cloudflare-workers": "^1.2.0"
     }
 }
