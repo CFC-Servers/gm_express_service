@@ -111,6 +111,7 @@ async function readRequest(c) {
     }
   }
 
+  responseHeaders["Content-Length"] = data.byteLength
   return c.body(data, responseCode, responseHeaders)
 }
 
