@@ -100,7 +100,7 @@ async function readRequest(c) {
 
   const rangeHeader = c.req.header("Range")
   if (rangeHeader) {
-    const dataRanges = parseRange(fullSize, c.req.header("Range"))
+    const dataRanges = parseRange(fullSize, rangeHeader)
 
     if (dataRanges && dataRanges.length > 0) {
       const range = dataRanges[0]
