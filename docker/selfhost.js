@@ -1,8 +1,8 @@
-import { Hono } from "https://deno.land/x/hono@v3.2.5/mod.ts"
+import { Hono } from "https://deno.land/x/hono@v3.2.7/mod.ts"
 import { connect } from "https://deno.land/x/redis@v0.27.4/mod.ts"
 import { serve } from "https://deno.land/std@0.167.0/http/server.ts"
-import { compress } from "https://deno.land/x/hono@v3.2.5/middleware/compress/index.ts"
-import { logger } from "https://deno.land/x/hono@v3.2.5/middleware/logger/index.ts"
+import { compress } from "https://deno.land/x/hono@v3.2.7/middleware/compress/index.ts"
+import { logger } from "https://deno.land/x/hono@v3.2.7/middleware/logger/index.ts"
 
 const expiration = 60 * 60 * 24
 const redis = await connect({ hostname: "kv" })

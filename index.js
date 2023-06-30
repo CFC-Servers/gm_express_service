@@ -37,7 +37,7 @@ const parseRange = (total, range) => {
 
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
-  const expected = await c.env.GmodExpress.get(`token:${token}`)
+  const expected = await c.env.GmodExpress.get(`token:${token}`, { cacheTtl: expiration })
   return !!expected
 }
 
@@ -45,10 +45,8 @@ async function putData(c, data) {
   const id = crypto.randomUUID()
   const metadata = makeMetadata(c)
 
-  await Promise.all([
-    c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata),
-    c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
-  ])
+  await c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata)
+  await c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
 
   return id
 }
@@ -59,11 +57,11 @@ async function putToken(c, token) {
 }
 
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
+  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer", cacheTtl: expiration })
 }
 
 async function getSize(c, id) {
-  return await c.env.GmodExpress.get(`size:${id}`)
+  return await c.env.GmodExpress.get(`size:${id}`, { cacheTtl: expiration })
 }
 
 async function registerRequest(c) {
@@ -111,7 +109,6 @@ async function readRequest(c) {
     }
   }
 
-  responseHeaders["Content-Length"] = data.byteLength
   return c.body(data, responseCode, responseHeaders)
 }
 
@@ -157,7 +154,7 @@ app.post("/v1/write/:token", writeRequest)
 app.get("/v1/revision", async (c) => {
   // NOTE: A revision change does not necessarily imply a breaking change
   //       but it does imply that the user should update
-  return c.json({revision: 2});
+  return c.json({revision: 1});
 });
 
 app.get("*", async (c) => c.text("Not Found - you may need to update the gm_express addon!", 406))
