@@ -94,22 +94,24 @@ async function readRequest(c) {
   const fullSize = data.byteLength
 
   let responseCode = 200
+  const responseHeaders = {
+    "Content-Type": "application/octet-stream",
+  }
+
   const rangeHeader = c.req.header("Range")
   if (rangeHeader) {
     const dataRanges = parseRange(fullSize, c.req.header("Range"))
 
     if (dataRanges && dataRanges.length > 0) {
       const range = dataRanges[0]
-      data = data.slice(range.start, range.end)
+      data = data.slice(range.start, range.end + 1)
 
       responseCode = 206
+      responseHeaders["Content-Range"] = `bytes ${range.start}-${range.end + 1}/${fullSize}`
     }
   }
 
-  return c.body(data, 200, {
-    "Content-Type": "application/octet-stream",
-    "X-Full-Content-Length": `${fullSize}`
-  })
+  return c.body(data, responseCode, responseHeaders)
 }
 
 async function readSizeRequest(c) {
