@@ -13,6 +13,28 @@ const makeMetadata = (c, extraMetadata) => {
   }
 }
 
+const parseRange = (total, range) => {
+    if (!range || range.indexOf('=') == -1) {
+        return null;
+    }
+
+    const ranges = range.replace(/bytes=/, "").split(",");
+
+    return ranges.map((part) => {
+        const subParts = part.split("-");
+        const start = parseInt(subParts[0], 10);
+        const end = subParts[1]
+            ? parseInt(subParts[1], 10)
+            : total;
+
+        const finalStart = isNaN(start) ? 0 : Math.min(Math.max(start, 0), total);
+        const finalEnd = isNaN(end) ? total : Math.min(Math.max(end, finalStart), total);
+
+        return { start: finalStart, end: finalEnd };
+    });
+}
+
+
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
   const expected = await c.env.GmodExpress.get(`token:${token}`)
@@ -64,12 +86,30 @@ async function readRequest(c) {
   }
 
   const id = c.req.param("id")
-  const data = await getData(c, id)
+  let data = await getData(c, id)
   if (data === null) {
     return c.text("No data found", 404)
   }
 
-  return c.body(data, 200, { "Content-Type": "application/octet-stream" })
+  const fullSize = data.byteLength
+
+  let responseCode = 200
+  const rangeHeader = c.req.header("Range")
+  if (rangeHeader) {
+    const dataRanges = parseRange(fullSize, c.req.header("Range"))
+
+    if (dataRanges && dataRanges.length > 0) {
+      const range = dataRanges[0]
+      data = data.slice(range.start, range.end)
+
+      responseCode = 206
+    }
+  }
+
+  return c.body(data, 200, {
+    "Content-Type": "application/octet-stream",
+    "X-Full-Content-Length": `${fullSize}`
+  })
 }
 
 async function readSizeRequest(c) {
@@ -114,7 +154,7 @@ app.post("/v1/write/:token", writeRequest)
 app.get("/v1/revision", async (c) => {
   // NOTE: A revision change does not necessarily imply a breaking change
   //       but it does imply that the user should update
-  return c.json({revision: 1});
+  return c.json({revision: 2});
 });
 
 app.get("*", async (c) => c.text("Not Found - you may need to update the gm_express addon!", 406))
