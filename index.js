@@ -13,9 +13,31 @@ const makeMetadata = (c, extraMetadata) => {
   }
 }
 
+const parseRange = (total, range) => {
+    if (!range || range.indexOf('=') == -1) {
+        return null;
+    }
+
+    const ranges = range.replace(/bytes=/, "").split(",");
+
+    return ranges.map((part) => {
+        const subParts = part.split("-");
+        const start = parseInt(subParts[0], 10);
+        const end = subParts[1]
+            ? parseInt(subParts[1], 10)
+            : total;
+
+        const finalStart = isNaN(start) ? 0 : Math.min(Math.max(start, 0), total);
+        const finalEnd = isNaN(end) ? total : Math.min(Math.max(end, finalStart), total);
+
+        return { start: finalStart, end: finalEnd };
+    });
+}
+
+
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
-  const expected = await c.env.GmodExpress.get(`token:${token}`)
+  const expected = await c.env.GmodExpress.get(`token:${token}`, { cacheTtl: expiration })
   return !!expected
 }
 
@@ -23,10 +45,8 @@ async function putData(c, data) {
   const id = crypto.randomUUID()
   const metadata = makeMetadata(c)
 
-  await Promise.all([
-    c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata),
-    c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
-  ])
+  await c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata)
+  await c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
 
   return id
 }
@@ -37,11 +57,11 @@ async function putToken(c, token) {
 }
 
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
+  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer", cacheTtl: expiration })
 }
 
 async function getSize(c, id) {
-  return await c.env.GmodExpress.get(`size:${id}`)
+  return await c.env.GmodExpress.get(`size:${id}`, { cacheTtl: expiration })
 }
 
 async function registerRequest(c) {
@@ -64,12 +84,32 @@ async function readRequest(c) {
   }
 
   const id = c.req.param("id")
-  const data = await getData(c, id)
+  let data = await getData(c, id)
   if (data === null) {
     return c.text("No data found", 404)
   }
 
-  return c.body(data, 200, { "Content-Type": "application/octet-stream" })
+  const fullSize = data.byteLength
+
+  let responseCode = 200
+  const responseHeaders = {
+    "Content-Type": "application/octet-stream",
+  }
+
+  const rangeHeader = c.req.header("Range")
+  if (rangeHeader) {
+    const dataRanges = parseRange(fullSize, rangeHeader)
+
+    if (dataRanges && dataRanges.length > 0) {
+      const range = dataRanges[0]
+      data = data.slice(range.start, range.end + 1)
+
+      responseCode = 206
+      responseHeaders["Content-Range"] = `bytes ${range.start}-${range.end + 1}/${fullSize}`
+    }
+  }
+
+  return c.body(data, responseCode, responseHeaders)
 }
 
 async function readSizeRequest(c) {
