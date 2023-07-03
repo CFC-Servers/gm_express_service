@@ -15,7 +15,7 @@ const expressStub = {
   },
 
   put: async (key, value, metadata) => {
-    let ttl = expiration
+    let ttl = expiration * 2
     if (metadata) {
       if (metadata.expirationTtl) {
         ttl = metadata.expirationTtl
@@ -32,7 +32,6 @@ const expressStub = {
 const app = new Hono()
 
 app.use("*", logger())
-app.use("*", compress("gzip"))
 app.use("*", async (c, next) => {
   c.env.GmodExpress = expressStub
   await next()

@@ -3,14 +3,17 @@ const maxDataSize = 24 * 1024 * 1024
 
 import { app, serve } from "./setup_app.js"
 
-const makeMetadata = (c, extraMetadata) => {
+const makeMetadata = (c) => {
   return {
-    expirationTtl: expiration,
+    expirationTtl: expiration * 2,
     metadata: {
-      ...extraMetadata,
       remote: c.req.header("CF-Connecting-IP") || c.req.header("X-Forwarded-For")
     }
   }
+}
+
+const makeUUID = () => {
+  return crypto.randomUUID({ disableEntropyCache: true })
 }
 
 const parseRange = (total, range) => {
@@ -37,16 +40,23 @@ const parseRange = (total, range) => {
 
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
-  const expected = await c.env.GmodExpress.get(`token:${token}`, { cacheTtl: expiration })
+  const expected = await c.env.GmodExpress.get(`token:${token}` )
   return !!expected
 }
 
 async function putData(c, data) {
-  const id = crypto.randomUUID()
+  const id = makeUUID()
   const metadata = makeMetadata(c)
 
-  await c.env.GmodExpress.put(`size:${id}`, data.byteLength, metadata)
-  await c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
+  try {
+    await Promise.all([
+      c.env.GmodExpress.put(`size:${id}`, data.byteLength.toString(), metadata),
+      c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
+    ])
+  } catch (e) {
+    console.log("Failed to put data", e)
+    return null
+  }
 
   return id
 }
@@ -57,36 +67,43 @@ async function putToken(c, token) {
 }
 
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer", cacheTtl: expiration })
+  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
 }
 
 async function getSize(c, id) {
-  return await c.env.GmodExpress.get(`size:${id}`, { cacheTtl: expiration })
+  return await c.env.GmodExpress.get(`size:${id}`)
 }
 
 async function registerRequest(c) {
-  const server = crypto.randomUUID()
-  const client = crypto.randomUUID()
+  const server = makeUUID()
+  const client = makeUUID()
 
-  await Promise.all([
-    putToken(c, server),
-    putToken(c, client)
-  ])
+  try {
+    await Promise.all([
+      putToken(c, server),
+      putToken(c, client)
+    ])
 
-  return c.json({server: server, client: client})
+    return c.json({server: server, client: client})
+
+  } catch (e) {
+    console.log("Failed to register request", e)
+    return c.text("Failed to register request", 500)
+  }
 }
 
 async function readRequest(c) {
   const token = c.req.param("token")
   const isValid = await validateRequest(c, token)
   if (!isValid) {
-    return c.text("", 401)
+    return c.text("Invalid Request Parameters", 401)
   }
 
   const id = c.req.param("id")
   let data = await getData(c, id)
   if (data === null) {
-    return c.text("No data found", 404)
+    console.log("No data found for id", id)
+    return c.notFound()
   }
 
   const fullSize = data.byteLength
@@ -102,12 +119,16 @@ async function readRequest(c) {
 
     if (dataRanges && dataRanges.length > 0) {
       const range = dataRanges[0]
+
       data = data.slice(range.start, range.end + 1)
 
       responseCode = 206
-      responseHeaders["Content-Range"] = `bytes ${range.start}-${range.end + 1}/${fullSize}`
+      responseHeaders["Accept-Ranges"] = "bytes"
+      responseHeaders["Content-Range"] = `bytes ${range.start}-${range.end - 1}/${fullSize}`
     }
   }
+
+  responseHeaders["Content-Length"] = data.byteLength.toString()
 
   return c.body(data, responseCode, responseHeaders)
 }
@@ -122,6 +143,7 @@ async function readSizeRequest(c) {
   const id = c.req.param("id")
   const size = await getSize(c, id)
   if (size === null) {
+    console.log("No size found for id", id)
     return c.text("Size not found", 404)
   }
 
@@ -132,7 +154,7 @@ async function writeRequest(c) {
   const token = c.req.param("token")
   const isValid = await validateRequest(c, token)
   if (!isValid) {
-    return c.text("", 401)
+    return c.text("Invalid Request Parameters", 401)
   }
 
   const data = await c.req.arrayBuffer()
@@ -141,6 +163,10 @@ async function writeRequest(c) {
   }
 
   const id = await putData(c, data)
+  if (id === null) {
+    return c.text("Failed to store data", 500)
+  }
+
   return c.json({id: id})
 }
 
