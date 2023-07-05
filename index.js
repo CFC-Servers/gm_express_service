@@ -51,7 +51,8 @@ async function putData(c, data) {
   try {
     await Promise.all([
       c.env.GmodExpress.put(`size:${id}`, data.byteLength.toString(), metadata),
-      c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
+      c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" }),
+      c.env.ExpressV1Bucket.put(`data:${id}`, data )
     ])
   } catch (e) {
     console.log("Failed to put data", e)
@@ -64,6 +65,16 @@ async function putData(c, data) {
 async function putToken(c, token) {
   const now = Date.now().toString()
   await c.env.GmodExpress.put(`token:${token}`, now, makeMetadata(c))
+}
+
+async function getBucketData(c, id) {
+  const data = await c.env.ExpressV1Bucket.get(`data:${id}`)
+
+  if (data === null) {
+    return null
+  }
+
+  return await data.arrayBuffer()
 }
 
 async function getData(c, id) {
@@ -102,8 +113,16 @@ async function readRequest(c) {
   const id = c.req.param("id")
   let data = await getData(c, id)
   if (data === null) {
-    console.log("No data found for id", id)
-    return c.notFound()
+    console.log("No data found for id in KV", id)
+
+    const bucketData = await getBucketData(c, id)
+    if (bucketData == null) {
+      console.log("No data found for id in Bucket", id)
+      return c.notFound()
+    }
+
+    console.log("Found data in bucket when KV missed", id)
+    data = bucketData
   }
 
   const fullSize = data.byteLength

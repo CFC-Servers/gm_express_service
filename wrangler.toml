@@ -6,3 +6,13 @@ compatibility_date = "2022-11-05"
 rules = [
   { type = "ESModule", globs = ["setup_app.js"] }
 ]
+
+[env.staging]
+route = "stg.gmod.express/*"
+kv_namespaces = [
+    { binding = "GmodExpress", id = "c4c3e25d3eae48fa805cb18a4e07b4da" }
+]
+r2_buckets = [ { binding = 'ExpressV1Bucket', bucket_name = "express-v1-staging" } ]
+
+[env.production]
+route = "gmod.express/*"
