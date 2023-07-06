@@ -31,6 +31,22 @@ It should only take a couple of minutes, just click this button! (more instructi
 
 ![chrome_5xgZ8Z0zRg](https://user-images.githubusercontent.com/7936439/202330307-8756142d-42e5-4e85-919a-1e4c335afff3.png)
 
+<h4>Configuring Bucket Lifecycle (important!)</h4>
+Due to some technical weirdness with Cloudflare's KV, we also use Cloudflare's R2 storage system as a backup.
+In the event that a client can't read a KV value, it will read it from R2 instead (slower, but R2 is "strongly consistent" so it's a reliable way to get the data).
+
+However, R2 doesn't have a built-in way to expire documents.
+
+We can use the S3 API to configure an "Object Lifecycle" on our backup bucket which will expire keys at the same cadence as KV.
+
+<strong>If you don't do this, your R2 bucket will fill up indefinitely!</strong>
+
+Here's how you do it:
+1. Wait for the app to deploy at least once (it will create the Bucket for you)
+2. Visit the Cloudflare Dashboard, click on "R2"
+3. Follow along with these images to set up an Expiration lifecycle:
+
+
 </details>
 
 <details>
