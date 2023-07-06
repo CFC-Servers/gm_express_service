@@ -29,11 +29,24 @@ const expressStub = {
   }
 }
 
+async function noop() {
+  return new Promise((resolve, reject) => {
+    resolve(null)
+  })
+}
+
+const noop = async fun
+const bucketStub = {
+  get: noop,
+  put: noop
+}
+
 const app = new Hono()
 
 app.use("*", logger())
 app.use("*", async (c, next) => {
   c.env.GmodExpress = expressStub
+  c.env.ExpressV1Bucket = bucketStub
   await next()
 })
 
