@@ -49,10 +49,13 @@ async function putData(c, data) {
   const metadata = makeMetadata(c)
 
   try {
+    const size = data.byteLength.toString()
+
     await Promise.all([
-      c.env.GmodExpress.put(`size:${id}`, data.byteLength.toString(), metadata),
+      c.env.GmodExpress.put(`size:${id}`, size, metadata),
       c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" }),
-      c.env.ExpressV1Bucket.put(`data:${id}`, data )
+      c.env.ExpressV1Bucket.put(`data:${id}`, data),
+      c.env.ExpressV1Bucket.put(`size:${id}`, size)
     ])
   } catch (e) {
     console.log("Failed to put data", e)
@@ -79,6 +82,16 @@ async function getBucketData(c, id) {
 
 async function getData(c, id) {
   return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
+}
+
+async function getBucketSize(c, id) {
+  const size = await c.env.ExpressV1Bucket.get(`size:${id}`)
+
+  if (size === null) {
+    return null
+  }
+
+  return parseInt(await size.text())
 }
 
 async function getSize(c, id) {
@@ -160,10 +173,18 @@ async function readSizeRequest(c) {
   }
 
   const id = c.req.param("id")
-  const size = await getSize(c, id)
+  let size = await getSize(c, id)
   if (size === null) {
     console.log("No size found for id", id)
-    return c.text("Size not found", 404)
+
+    const bucketSize = await getBucketSize(c, id)
+    if (bucketSize == null) {
+      console.log("No size found for id in Bucket", id)
+      return c.notFound()
+    }
+
+    console.log("Found size in bucket when KV missed", id)
+    size = bucketSize
   }
 
   return c.json({size: size})
