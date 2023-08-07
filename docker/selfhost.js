@@ -35,7 +35,6 @@ async function noop() {
   })
 }
 
-const noop = async fun
 const bucketStub = {
   get: noop,
   put: noop
