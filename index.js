@@ -37,7 +37,6 @@ const parseRange = (total, range) => {
     });
 }
 
-
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
   const expected = await c.env.GmodExpress.get(`token:${token}` )
@@ -46,14 +45,11 @@ async function validateRequest(c, token) {
 
 async function putData(c, data) {
   const id = makeUUID()
-  const metadata = makeMetadata(c)
 
   try {
     const size = data.byteLength.toString()
 
     await Promise.all([
-      c.env.GmodExpress.put(`size:${id}`, size, metadata),
-      c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" }),
       c.env.ExpressV1Bucket.put(`data:${id}`, data),
       c.env.ExpressV1Bucket.put(`size:${id}`, size)
     ])
@@ -70,7 +66,7 @@ async function putToken(c, token) {
   await c.env.GmodExpress.put(`token:${token}`, now, makeMetadata(c))
 }
 
-async function getBucketData(c, id) {
+async function getData(c, id) {
   const data = await c.env.ExpressV1Bucket.get(`data:${id}`)
 
   if (data === null) {
@@ -80,11 +76,7 @@ async function getBucketData(c, id) {
   return await data.arrayBuffer()
 }
 
-async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
-}
-
-async function getBucketSize(c, id) {
+async function getSize(c, id) {
   const size = await c.env.ExpressV1Bucket.get(`size:${id}`)
 
   if (size === null) {
@@ -92,10 +84,6 @@ async function getBucketSize(c, id) {
   }
 
   return parseInt(await size.text())
-}
-
-async function getSize(c, id) {
-  return await c.env.GmodExpress.get(`size:${id}`)
 }
 
 async function registerRequest(c) {
@@ -124,19 +112,13 @@ async function readRequest(c) {
   }
 
   const id = c.req.param("id")
-  let data = await getData(c, id)
-  if (data === null) {
-    console.log("No data found for id in KV", id)
-
-    const bucketData = await getBucketData(c, id)
-    if (bucketData == null) {
-      console.log("No data found for id in Bucket", id)
-      return c.notFound()
-    }
-
-    console.log("Found data in bucket when KV missed", id)
-    data = bucketData
+  const data = await getData(c, id)
+  if (data == null) {
+    console.log("No data found for id in Bucket", id)
+    return c.notFound()
   }
+  
+  console.log("Found data in bucket when KV missed", id)
 
   const fullSize = data.byteLength
 
@@ -175,16 +157,8 @@ async function readSizeRequest(c) {
   const id = c.req.param("id")
   let size = await getSize(c, id)
   if (size === null) {
-    console.log("No size found for id", id)
-
-    const bucketSize = await getBucketSize(c, id)
-    if (bucketSize == null) {
-      console.log("No size found for id in Bucket", id)
-      return c.notFound()
-    }
-
-    console.log("Found size in bucket when KV missed", id)
-    size = bucketSize
+    console.log("No size found for id in Bucket", id)
+    return c.notFound()
   }
 
   return c.json({size: size})
@@ -211,6 +185,7 @@ async function writeRequest(c) {
 }
 
 app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
+app.get("/discord", async () => Response.redirect("https://discord.gg/5JUqZjzmYJ", 302));
 
 // V1 Routes
 app.get("/v1/register", registerRequest)
