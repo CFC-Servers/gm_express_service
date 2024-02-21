@@ -2,7 +2,7 @@ name = "gmod-express"
 main = "./index.js"
 workers_dev = true
 
-compatibility_date = "2022-11-05"
+compatibility_date = "2023-06-22"
 rules = [
   { type = "ESModule", globs = ["setup_app.js"] }
 ]
