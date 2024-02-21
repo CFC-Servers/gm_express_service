@@ -1,4 +1,7 @@
 # Express Service
+<p align="left">
+    <a href="https://discord.gg/5JUqZjzmYJ" alt="Discord Invite"><img src="https://img.shields.io/discord/981394195812085770?label=Support&logo=discord&logoColor=white" /></a>
+</p>
 
 This is the backend web project that supports the [GMod Express Addon](https://github.com/cfc-Servers/gm_express).
 
