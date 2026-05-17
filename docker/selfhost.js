@@ -5,7 +5,7 @@ import { logger } from "https://deno.land/x/hono@v3.2.7/middleware/logger/index.
 import LRUCache from "https://deno.land/x/lru_cache@6.0.0-deno.4/mod.ts"
 
 const TTL_DETAULT = 5 * 60 * 1000 // 5 minutes
-const store = new LRUCache({ maxAge: TTL_DETAULT })
+const store = new LRUCache({ maxAge: TTL_DETAULT, max: 1024 })
 
 const expressStub = {
   get: async (key, _metadata) => {
