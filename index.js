@@ -4,7 +4,7 @@ import { app, serve, expiration } from "./setup_app.js"
 
 const makeMetadata = (c) => {
   return {
-    expirationTtl: expiration * 2,
+    expirationTtl: expiration,
     metadata: {
       remote: c.req.header("CF-Connecting-IP") || c.req.header("X-Forwarded-For")
     }

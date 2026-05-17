@@ -3,6 +3,6 @@ import { Hono } from "hono"
 
 const app = new Hono()
 const serve = () => {}
-const expiration = 60 * 60 * 24
+const expiration = 60 * 60 * 48
 
 export { app, serve, expiration }
