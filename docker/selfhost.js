@@ -4,8 +4,8 @@ import { compress } from "https://deno.land/x/hono@v3.2.7/middleware/compress/in
 import { logger } from "https://deno.land/x/hono@v3.2.7/middleware/logger/index.ts"
 import LRUCache from "https://deno.land/x/lru_cache@6.0.0-deno.4/mod.ts"
 
-const expiration = parseInt(Deno.env.get("GM_EXPRESS_EXPIRATION") || "") || 5 * 60 * 1000
-const store = new LRUCache({ maxAge: expiration, max: 1024 })
+const expiration = parseInt(Deno.env.get("GM_EXPRESS_EXPIRATION") || "") || 5 * 60
+const store = new LRUCache({ maxAge: expiration * 1000, max: 1024 })
 
 const expressStub = {
   get: async (key, _metadata) => {
