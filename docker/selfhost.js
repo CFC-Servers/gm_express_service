@@ -4,7 +4,7 @@ import { compress } from "https://deno.land/x/hono@v3.2.7/middleware/compress/in
 import { logger } from "https://deno.land/x/hono@v3.2.7/middleware/logger/index.ts"
 import LRUCache from "https://deno.land/x/lru_cache@6.0.0-deno.4/mod.ts"
 
-const TTL_DETAULT = 5 * 60 * 1000 // 5 minutes
+const expiration = parseInt(Deno.env.get("GM_EXPRESS_EXPIRATION") || "") || 5 * 60 * 1000
 const store = new LRUCache({ maxAge: TTL_DETAULT, max: 1024 })
 
 const expressStub = {
@@ -25,4 +25,4 @@ app.use("*", async (c, next) => {
   await next()
 })
 
-export { app, serve }
+export { app, serve, expiration }

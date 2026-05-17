@@ -1,7 +1,6 @@
-const expiration = 60 * 60 * 24
 const maxDataSize = 24 * 1024 * 1024
 
-import { app, serve } from "./setup_app.js"
+import { app, serve, expiration } from "./setup_app.js"
 
 const makeMetadata = (c) => {
   return {
@@ -84,7 +83,7 @@ async function registerRequest(c) {
       putToken(c, client)
     ])
 
-    return c.json({server: server, client: client})
+    return c.json({server: server, client: client, expiration: expiration})
 
   } catch (e) {
     console.log("Failed to register request", e)
