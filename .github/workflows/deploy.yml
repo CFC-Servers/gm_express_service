@@ -24,11 +24,17 @@ jobs:
             # Install packages
             yarn
 
-            # Create the namespace if it doesn't exist
+            # KV
+            ## Create the namespace if it doesn't exist
             wrangler2 kv:namespace list | grep -q GmodExpress || wrangler2 kv:namespace create GmodExpress
 
-            # Get the namespace ID
+            ## Get the namespace ID
             namespaceid=$(wrangler2 kv:namespace list | jq '.[] | select(.title=="gmod-express-GmodExpress") | .id')
 
-            # Add the binding to the wrangler.toml
+            ## Add the binding to the wrangler.toml
             echo "kv_namespaces = [ { binding = 'GmodExpress', id = $namespaceid } ]" >> wrangler.toml
+
+
+            # R2
+            wrangler2 r2 bucket list | grep -q '"express-v1"' || wrangler2 r2 bucket create express-v1
+            echo "r2_buckets = [ { binding = 'ExpressV1Bucket', bucket_name = 'express-v1' } ]" >> wrangler.toml
