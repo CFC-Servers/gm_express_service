@@ -1,4 +1,4 @@
-const maxDataSize = 24 * 1024 * 1024
+const maxDataSize = 100 * 1024 * 1024
 
 import { app, serve, expiration } from "./setup_app.js"
 
