@@ -34,6 +34,21 @@ It should only take a couple of minutes, just click this button! (more instructi
 
 ![chrome_5xgZ8Z0zRg](https://user-images.githubusercontent.com/7936439/202330307-8756142d-42e5-4e85-919a-1e4c335afff3.png)
 
+<h4>Configuring Bucket Lifecycle (important!)</h4>
+Express stores all uploaded data in Cloudflare's R2 storage system.
+(R2 is "strongly consistent" - uploads are immediately readable everywhere - which Cloudflare's KV couldn't guarantee.)
+
+However, R2 doesn't expire old objects on its own.
+
+<strong>If you don't set this up, your R2 bucket will fill up indefinitely!</strong>
+
+Here's how you do it:
+1. Wait for the app to deploy at least once (it will create the `express-v1` Bucket for you)
+2. Visit the Cloudflare Dashboard, click on "R2", then open the `express-v1` bucket
+3. Go to the bucket's "Settings" tab
+4. Under "Object lifecycle rules", add a rule that <strong>deletes objects 2 days after upload</strong>
+
+(2 days matches the expiration of the access tokens and upload IDs, so nothing will be deleted while an addon could still reference it.)
 </details>
 
 <details>

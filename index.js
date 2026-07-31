@@ -1,4 +1,4 @@
-const maxDataSize = 24 * 1024 * 1024
+const maxDataSize = 100 * 1024 * 1024
 
 import { app, serve, expiration } from "./setup_app.js"
 
@@ -36,7 +36,6 @@ const parseRange = (total, range) => {
     });
 }
 
-
 async function validateRequest(c, token) {
   // TODO: Do a sanity check on expiration time too
   const expected = await c.env.GmodExpress.get(`token:${token}` )
@@ -45,12 +44,13 @@ async function validateRequest(c, token) {
 
 async function putData(c, data) {
   const id = makeUUID()
-  const metadata = makeMetadata(c)
 
   try {
+    const size = data.byteLength.toString()
+
     await Promise.all([
-      c.env.GmodExpress.put(`size:${id}`, data.byteLength.toString(), metadata),
-      c.env.GmodExpress.put(`data:${id}`, data, { ...metadata, type: "arrayBuffer" })
+      c.env.ExpressV1Bucket.put(`data:${id}`, data),
+      c.env.ExpressV1Bucket.put(`size:${id}`, size)
     ])
   } catch (e) {
     console.log("Failed to put data", e)
@@ -66,11 +66,23 @@ async function putToken(c, token) {
 }
 
 async function getData(c, id) {
-  return await c.env.GmodExpress.get(`data:${id}`, { type: "arrayBuffer" })
+  const data = await c.env.ExpressV1Bucket.get(`data:${id}`)
+
+  if (data === null) {
+    return null
+  }
+
+  return await data.arrayBuffer()
 }
 
 async function getSize(c, id) {
-  return await c.env.GmodExpress.get(`size:${id}`)
+  const size = await c.env.ExpressV1Bucket.get(`size:${id}`)
+
+  if (size === null) {
+    return null
+  }
+
+  return parseInt(await size.text())
 }
 
 async function registerRequest(c) {
@@ -143,7 +155,7 @@ async function readSizeRequest(c) {
   const size = await getSize(c, id)
   if (size === null) {
     console.log("No size found for id", id)
-    return c.text("Size not found", 404)
+    return c.notFound()
   }
 
   return c.json({size: size})
@@ -170,6 +182,7 @@ async function writeRequest(c) {
 }
 
 app.get("/", async () => Response.redirect("https://github.com/CFC-Servers/gm_express", 302));
+app.get("/discord", async () => Response.redirect("https://discord.gg/5JUqZjzmYJ", 302));
 
 // V1 Routes
 app.get("/v1/register", registerRequest)

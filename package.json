@@ -11,10 +11,9 @@
     "author": "{{ authors }}",
     "license": "ISC",
     "devDependencies": {
-        "prettier": "^1.19.1"
+        "prettier": "^3.3.0"
     },
     "dependencies": {
-        "hono": "^3.2.5",
-        "serverless-cloudflare-workers": "^1.2.0"
+        "hono": "^4.6.0"
     }
 }
