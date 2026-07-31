@@ -1,4 +1,7 @@
 # Express Service
+<p align="left">
+    <a href="https://discord.gg/5JUqZjzmYJ" alt="Discord Invite"><img src="https://img.shields.io/discord/981394195812085770?label=Support&logo=discord&logoColor=white" /></a>
+</p>
 
 This is the backend web project that supports the [GMod Express Addon](https://github.com/cfc-Servers/gm_express).
 
@@ -32,21 +35,20 @@ It should only take a couple of minutes, just click this button! (more instructi
 ![chrome_5xgZ8Z0zRg](https://user-images.githubusercontent.com/7936439/202330307-8756142d-42e5-4e85-919a-1e4c335afff3.png)
 
 <h4>Configuring Bucket Lifecycle (important!)</h4>
-Due to some technical weirdness with Cloudflare's KV, we also use Cloudflare's R2 storage system as a backup.
-In the event that a client can't read a KV value, it will read it from R2 instead (slower, but R2 is "strongly consistent" so it's a reliable way to get the data).
+Express stores all uploaded data in Cloudflare's R2 storage system.
+(R2 is "strongly consistent" - uploads are immediately readable everywhere - which Cloudflare's KV couldn't guarantee.)
 
-However, R2 doesn't have a built-in way to expire documents.
+However, R2 doesn't expire old objects on its own.
 
-We can use the S3 API to configure an "Object Lifecycle" on our backup bucket which will expire keys at the same cadence as KV.
-
-<strong>If you don't do this, your R2 bucket will fill up indefinitely!</strong>
+<strong>If you don't set this up, your R2 bucket will fill up indefinitely!</strong>
 
 Here's how you do it:
-1. Wait for the app to deploy at least once (it will create the Bucket for you)
-2. Visit the Cloudflare Dashboard, click on "R2"
-3. Follow along with these images to set up an Expiration lifecycle:
+1. Wait for the app to deploy at least once (it will create the `express-v1` Bucket for you)
+2. Visit the Cloudflare Dashboard, click on "R2", then open the `express-v1` bucket
+3. Go to the bucket's "Settings" tab
+4. Under "Object lifecycle rules", add a rule that <strong>deletes objects 2 days after upload</strong>
 
-
+(2 days matches the expiration of the access tokens and upload IDs, so nothing will be deleted while an addon could still reference it.)
 </details>
 
 <details>

@@ -6,4 +6,6 @@ WORKDIR /app
 COPY ./index.js /app/index.js
 COPY ./docker/selfhost.js /app/setup_app.js
 
-ENTRYPOINT ["deno", "run", "--allow-net", "--allow-read", "/app/index.js"]
+RUN deno cache /app/index.js
+
+ENTRYPOINT ["deno", "run", "--allow-net", "--allow-read", "--allow-env", "/app/index.js"]

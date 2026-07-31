@@ -1,52 +1,55 @@
-import { Hono } from "https://deno.land/x/hono@v3.2.7/mod.ts"
-import { connect } from "https://deno.land/x/redis@v0.27.4/mod.ts"
-import { serve } from "https://deno.land/std@0.167.0/http/server.ts"
-import { compress } from "https://deno.land/x/hono@v3.2.7/middleware/compress/index.ts"
-import { logger } from "https://deno.land/x/hono@v3.2.7/middleware/logger/index.ts"
+import { Hono } from "npm:hono@^4.6.0"
+import { logger } from "npm:hono@^4.6.0/logger"
+import { LRUCache } from "npm:lru-cache@^11.0.0"
 
-const expiration = 60 * 60 * 24
-const redis = await connect({ hostname: "kv" })
+const expiration = parseInt(Deno.env.get("GM_EXPRESS_EXPIRATION") || "") || 5 * 60
+const tokenExpiration = 24 * 60 * 60
+const store = new LRUCache({ ttl: expiration * 1000, max: 1024 })
+const tokenStore = new LRUCache({ ttl: tokenExpiration * 1000, max: 4096 })
+const bucketStore = new LRUCache({ ttl: expiration * 1000, max: 1024 })
 
+// Emulates the GmodExpress KV namespace
 const expressStub = {
-  get: async (key, metadata) => {
-    const isBuffer = metadata?.type === "arrayBuffer"
-    const data = await redis.executor.exec("GET", key)
-    return isBuffer ? data.buffer() : data
+  get: async (key, _metadata) => {
+    if (key.startsWith("token:")) return tokenStore.get(key)
+    return store.get(key)
   },
 
-  put: async (key, value, metadata) => {
-    let ttl = expiration * 2
-    if (metadata) {
-      if (metadata.expirationTtl) {
-        ttl = metadata.expirationTtl
-      }
-      if (metadata.type === "arrayBuffer") {
-        value = new Uint8Array(value)
-      }
+  put: async (key, value, _metadata) => {
+    if (key.startsWith("token:")) {
+      tokenStore.set(key, value)
+    } else {
+      store.set(key, value)
     }
-
-    await redis.sendCommand("SET", key, value, "EX", ttl)
   }
 }
 
-async function noop() {
-  return new Promise((resolve, reject) => {
-    resolve(null)
-  })
-}
-
+// Emulates the ExpressV1Bucket R2 bucket, values are stored as bytes
 const bucketStub = {
-  get: noop,
-  put: noop
+  get: async (key) => {
+    const value = bucketStore.get(key)
+    if (value === undefined) return null
+
+    return {
+      arrayBuffer: async () => value.buffer,
+      text: async () => new TextDecoder().decode(value)
+    }
+  },
+
+  put: async (key, value) => {
+    const bytes = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value)
+    bucketStore.set(key, bytes)
+  }
 }
 
 const app = new Hono()
 
 app.use("*", logger())
 app.use("*", async (c, next) => {
-  c.env.GmodExpress = expressStub
-  c.env.ExpressV1Bucket = bucketStub
+  c.env = { GmodExpress: expressStub, ExpressV1Bucket: bucketStub }
   await next()
 })
 
-export { app, serve }
+const serve = (handler) => Deno.serve(handler)
+
+export { app, serve, expiration }

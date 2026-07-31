@@ -1,11 +1,10 @@
-const expiration = 60 * 60 * 24
 const maxDataSize = 24 * 1024 * 1024
 
-import { app, serve } from "./setup_app.js"
+import { app, serve, expiration } from "./setup_app.js"
 
 const makeMetadata = (c) => {
   return {
-    expirationTtl: expiration * 2,
+    expirationTtl: expiration,
     metadata: {
       remote: c.req.header("CF-Connecting-IP") || c.req.header("X-Forwarded-For")
     }
@@ -96,7 +95,7 @@ async function registerRequest(c) {
       putToken(c, client)
     ])
 
-    return c.json({server: server, client: client})
+    return c.json({server: server, client: client, expiration: expiration})
 
   } catch (e) {
     console.log("Failed to register request", e)
@@ -112,13 +111,11 @@ async function readRequest(c) {
   }
 
   const id = c.req.param("id")
-  const data = await getData(c, id)
+  let data = await getData(c, id)
   if (data == null) {
-    console.log("No data found for id in Bucket", id)
+    console.log("No data found for id", id)
     return c.notFound()
   }
-  
-  console.log("Found data in bucket when KV missed", id)
 
   const fullSize = data.byteLength
 
@@ -155,9 +152,9 @@ async function readSizeRequest(c) {
   }
 
   const id = c.req.param("id")
-  let size = await getSize(c, id)
+  const size = await getSize(c, id)
   if (size === null) {
-    console.log("No size found for id in Bucket", id)
+    console.log("No size found for id", id)
     return c.notFound()
   }
 
